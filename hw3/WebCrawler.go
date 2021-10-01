@@ -13,17 +13,17 @@ type Fetcher interface {
 }
 
 type MutexCache struct {
-	v  map[string]bool
-	mu sync.Mutex
+	cache map[string]bool
+	mu    sync.Mutex
 }
 
-var c = MutexCache{v: make(map[string]bool)}
+var c = MutexCache{cache: make(map[string]bool)}
 
 func (mc *MutexCache) checkVisited(url string)bool{
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
-	if _,ok := mc.v[url]; !ok {
-		mc.v[url]=true
+	if _,ok := mc.cache[url]; !ok {
+		mc.cache[url]=true
 		return false
 	}
 	return true
