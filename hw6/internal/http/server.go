@@ -14,61 +14,65 @@ import (
 	"time"
 )
 
-type Server struct {
-	ctx        context.Context
-	idleConsCh chan struct{}
-	store      store.Store
+const (
+	readTimeout  = 5 * time.Second
+	writeTimeout = 30 * time.Second
+)
 
-	Address string
+type Server struct {
+	ctx               context.Context
+	idleConnectionsCh chan struct{}
+	store             store.Store
+	Address           string
 }
 
 func NewServer(ctx context.Context, address string, store store.Store) *Server {
 	return &Server{
-		ctx:        ctx,
-		idleConsCh: make(chan struct{}),
-		store:      store,
-		Address:    address,
+		ctx:               ctx,
+		idleConnectionsCh: make(chan struct{}),
+		store:             store,
+		Address:           address,
 	}
 }
 
 func (s *Server) basicHandler() chi.Router {
 	router := chi.NewRouter()
 
-	router.Post("/coupons", func(writer http.ResponseWriter, request *http.Request) {
+	router.Post("/coupons", func(w http.ResponseWriter, r *http.Request) {
 		coupon := new(models.Coupon)
-		if err := json.NewDecoder(request.Body).Decode(coupon); err != nil {
-			fmt.Fprintf(writer, "Unknown err: %v", err)
+		if err := json.NewDecoder(r.Body).Decode(coupon); err != nil {
+			fmt.Fprintf(w, "Unknown err: %v", err)
 			return
 		}
 
-		s.store.Create(request.Context(), coupon)
+		s.store.Coupons().Create(r.Context(), coupon)
 	})
 
-	router.Get("/coupons", func(writer http.ResponseWriter, request *http.Request) {
-		coupons, err := s.store.All(request.Context())
+	router.Get("/coupons", func(w http.ResponseWriter, r *http.Request) {
+		coupons, err := s.store.Coupons().All(r.Context())
 		if err != nil {
-			fmt.Fprintf(writer, "Unknown err: %v", err)
+			fmt.Fprintf(w, "Unknown err: %v", err)
 			return
 		}
 
-		render.JSON(writer, request, coupons)
+		render.JSON(w, r, coupons)
 	})
 
-	router.Get("/coupons/{id}", func(writer http.ResponseWriter, request *http.Request) {
-		idStr := chi.URLParam(request, "id")
+	router.Get("/coupons/{id}", func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			fmt.Fprintf(writer, "Unknown err: %v", err)
+			fmt.Fprintf(w, "Unknown err: %v", err)
 			return
 		}
 
-		coupon, err := s.store.ByID(request.Context(), id)
+		coupon, err := s.store.Coupons().ByID(r.Context(), id)
 		if err != nil {
-			fmt.Fprintf(writer, "Unknown err: %v", err)
+			fmt.Fprintf(w, "Unknown err: %v", err)
 			return
 		}
 
-		render.JSON(writer, request, coupon)
+		render.JSON(w, r, coupon)
 	})
 
 	router.Put("/coupons", func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +82,7 @@ func (s *Server) basicHandler() chi.Router {
 			return
 		}
 
-		s.store.Update(r.Context(), coupon)
+		s.store.Coupons().Update(r.Context(), coupon)
 	})
 
 	router.Delete("/coupons/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +93,51 @@ func (s *Server) basicHandler() chi.Router {
 			return
 		}
 
-		s.store.Delete(r.Context(), id)
+		s.store.Coupons().Delete(r.Context(), id)
+	})
+
+	router.Post("/registration", func(w http.ResponseWriter, r *http.Request) {
+		user := new(models.User)
+		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+			fmt.Fprintf(w, "Unknown err: %v", err)
+			return
+		}
+
+		err := s.store.Users().Create(r.Context(), user)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+	})
+
+	router.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+		type request struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		req := new(request)
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			fmt.Fprintf(w, "Unknown err: %v", err)
+			return
+		}
+
+		u, err := s.store.Users().ByEmail(r.Context(), req.Email)
+		if err != nil || !u.ComparePassword(req.Password) {
+			fmt.Fprintln(w, "Incorrect email or password")
+			return
+		}
+
+	})
+
+	router.Get("/users", func(w http.ResponseWriter, r *http.Request) {
+		users, err := s.store.Users().All(r.Context())
+		if err != nil {
+			fmt.Fprintf(w, "Unknown err: %v", err)
+			return
+		}
+
+		render.JSON(w, r, users)
 	})
 
 	return router
@@ -99,8 +147,8 @@ func (s *Server) Run() error {
 	srv := &http.Server{
 		Addr:         s.Address,
 		Handler:      s.basicHandler(),
-		ReadTimeout:  time.Second * 5,
-		WriteTimeout: time.Second * 30,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
 	}
 	go s.ListenCtxForGT(srv)
 
@@ -116,9 +164,9 @@ func (s *Server) ListenCtxForGT(srv *http.Server) {
 	}
 
 	log.Println("[HTTP] Processed all idle connections")
-	close(s.idleConsCh)
+	close(s.idleConnectionsCh)
 }
 
 func (s *Server) WaitForGracefulTermination() {
-	<-s.idleConsCh
+	<-s.idleConnectionsCh
 }

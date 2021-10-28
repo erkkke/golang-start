@@ -7,10 +7,12 @@ import (
 	"log"
 )
 
+const port = ":8081"
+
 func main() {
 	store := inmemory.NewDB()
 
-	srv := http.NewServer(context.Background(), ":8081", store)
+	srv := http.NewServer(context.Background(), port, store)
 	if err := srv.Run(); err != nil {
 		log.Println(err)
 	}

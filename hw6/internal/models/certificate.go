@@ -1,7 +1,7 @@
 package models
 
 type Certificate struct {
-	Id                int    `json:"id"`
+	ID                int    `json:"id"`
 	Name              string `json:"name"`
 	RealPrice         int    `json:"real_price"`
 	Discount          int    `json:"discount"`
@@ -10,22 +10,15 @@ type Certificate struct {
 	CountOfSales      int    `json:"count_of_sales"`
 }
 
-//func NewCertificate(name string, realPrice, discount, count int) *Certificate {
-//	c := new(Certificate)
-//	c.Name = name
-//	c.RealPrice = realPrice
-//	c.Discount = discount
-//	c.SetDiscount(discount)
-//	c.Count = count
-//	return c
-//}
-//
-//func (c *Certificate) SetDiscount(discount int) {
-//	c.Discount = discount
-//	c.PriceWithDiscount = c.RealPrice * (1 - discount / 100)
-//}
-//
-//func (c *Certificate) AddSales() {
-//	c.Count--
-//	c.CountOfSales++
-//}
+func (c *Certificate) CalculatePriceWithDiscount() {
+	c.PriceWithDiscount = c.RealPrice * (1 - c.Discount/100)
+}
+
+func (c *Certificate) CalculateDiscount() {
+	c.Discount = (c.PriceWithDiscount / c.RealPrice) * 100
+}
+
+func (c *Certificate) AddSales() {
+	c.Count--
+	c.CountOfSales++
+}
