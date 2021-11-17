@@ -25,15 +25,17 @@ type Server struct {
 	Address string
 }
 
-func NewServer(ctx context.Context, address string, store store.Store, cache *lru.TwoQueueCache) *Server {
-	return &Server{
+func NewServer(ctx context.Context, opts ...ServerOption) *Server {
+	srv := &Server{
 		ctx:               ctx,
 		idleConnectionsCh: make(chan struct{}),
-		store:             store,
-		cache:             cache,
-
-		Address: address,
 	}
+
+	for _, opt := range opts {
+		opt(srv)
+	}
+
+	return srv
 }
 
 func (s *Server) basicHandler() chi.Router {

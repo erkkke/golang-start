@@ -23,7 +23,11 @@ func main() {
 		panic(err)
 	}
 
-	srv := http.NewServer(context.Background(), port, store, cache)
+	srv := http.NewServer(context.Background(),
+		http.WithAddress(port),
+		http.WithStore(store),
+		http.WithCache(cache),
+	)
 	if err := srv.Run(); err != nil {
 		log.Println(err)
 	}
