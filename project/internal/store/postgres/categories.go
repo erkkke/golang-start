@@ -2,8 +2,8 @@ package postgres
 
 import (
 	"context"
-	"github.com/erkkke/golang-start/hw6/internal/models"
-	"github.com/erkkke/golang-start/hw6/internal/store"
+	"github.com/erkkke/golang-start/project/internal/models"
+	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -32,9 +32,15 @@ func (c *CategoriesRepository) Create(ctx context.Context, category *models.Cate
 	return nil
 }
 
-func (c *CategoriesRepository) All(ctx context.Context) ([]*models.Category, error) {
+func (c *CategoriesRepository) All(ctx context.Context, filter *models.CategoriesFilter) ([]*models.Category, error) {
+	basicQuery := "SELECT * FROM categories"
+	if filter.Query != nil {
+		// sql-инъекция
+		basicQuery += " WHERE name ILIKE '%" + *filter.Query + "%'"
+	}
+
 	categories := make([]*models.Category, 0)
-	if err := c.conn.SelectContext(ctx, &categories, "SELECT * FROM categories"); err != nil {
+	if err := c.conn.SelectContext(ctx, &categories, basicQuery); err != nil {
 		return nil, err
 	}
 

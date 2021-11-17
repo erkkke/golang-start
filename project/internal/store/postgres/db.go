@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"github.com/erkkke/golang-start/hw6/internal/store"
+	"github.com/erkkke/golang-start/project/internal/store"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 )

@@ -2,8 +2,8 @@ package postgres
 
 import (
 	"context"
-	"github.com/erkkke/golang-start/hw6/internal/models"
-	"github.com/erkkke/golang-start/hw6/internal/store"
+	"github.com/erkkke/golang-start/project/internal/models"
+	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/jmoiron/sqlx"
 )
 

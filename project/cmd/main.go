@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/erkkke/golang-start/hw6/internal/http"
-	"github.com/erkkke/golang-start/hw6/internal/store/postgres"
+	"github.com/erkkke/golang-start/project/internal/http"
+	"github.com/erkkke/golang-start/project/internal/store/postgres"
+	lru "github.com/hashicorp/golang-lru"
 	"log"
 )
 
@@ -17,7 +18,12 @@ func main() {
 	}
 	defer store.Close()
 
-	srv := http.NewServer(context.Background(), port, store)
+	cache, err := lru.New2Q(6)
+	if err != nil {
+		panic(err)
+	}
+
+	srv := http.NewServer(context.Background(), port, store, cache)
 	if err := srv.Run(); err != nil {
 		log.Println(err)
 	}
