@@ -24,7 +24,7 @@ type CategoriesRepository interface {
 
 type CouponsRepository interface {
 	Create(ctx context.Context, coupon *models.Coupon) error
-	All(ctx context.Context, filter *models.CouponsFilter) ([]*models.Coupon, error)
+	All(ctx context.Context, filter *models.NameFilter) ([]*models.Coupon, error)
 	ByID(ctx context.Context, id int) (*models.Coupon, error)
 	Update(ctx context.Context, coupon *models.Coupon) error
 	Delete(ctx context.Context, id int) error
@@ -32,7 +32,7 @@ type CouponsRepository interface {
 
 type UsersRepository interface {
 	Create(ctx context.Context, user *models.User) error
-	All(ctx context.Context) ([]*models.User, error)
+	All(ctx context.Context, filter *models.NameFilter) ([]*models.User, error)
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
 	Delete(ctx context.Context, id int) error

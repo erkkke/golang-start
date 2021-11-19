@@ -3,22 +3,22 @@ package resources
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/erkkke/golang-start/project/internal/cache"
 	"github.com/erkkke/golang-start/project/internal/models"
 	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	validation "github.com/go-ozzo/ozzo-validation"
-	lru "github.com/hashicorp/golang-lru"
 	"net/http"
 	"strconv"
 )
 
 type CategoriesResource struct {
 	store store.Store
-	cache *lru.TwoQueueCache
+	cache cache.Cache
 }
 
-func NewCategoriesResource(store store.Store, cache *lru.TwoQueueCache) *CategoriesResource {
+func NewCategoriesResource(store store.Store, cache cache.Cache) *CategoriesResource {
 	return &CategoriesResource{
 		store: store,
 		cache: cache,
@@ -52,7 +52,11 @@ func (cr *CategoriesResource) CreateCategory(w http.ResponseWriter, r *http.Requ
 	}
 
 	// В идеале надо пройтись по всем буквам и по всем словам
-	cr.cache.Purge()
+	if err := cr.cache.DeleteAll(r.Context()); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Cache err: %v", err)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -63,8 +67,13 @@ func (cr *CategoriesResource) AllCategories(w http.ResponseWriter, r *http.Reque
 
 	searchQuery := queryValues.Get("query")
 	if searchQuery != "" {
-		categoriesFromCache, ok := cr.cache.Get(searchQuery)
-		if ok {
+		categoriesFromCache, err := cr.cache.Categories().Get(r.Context(), searchQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
+		if categoriesFromCache != nil {
 			render.JSON(w, r, categoriesFromCache)
 			return
 		}
@@ -79,10 +88,14 @@ func (cr *CategoriesResource) AllCategories(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if searchQuery != "" {
-		cr.cache.Add(searchQuery, categories)
+	if searchQuery != "" && len(categories) > 0{
+		err = cr.cache.Categories().Set(r.Context(), searchQuery, categories)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
 	}
-
 
 	render.JSON(w, r, categories)
 }

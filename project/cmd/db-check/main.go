@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/erkkke/golang-start/hw6/internal/models"
+	"github.com/erkkke/golang-start/project/internal/models"
 	_ "github.com/jackc/pgx/stdlib"
 	"github.com/jmoiron/sqlx"
 )

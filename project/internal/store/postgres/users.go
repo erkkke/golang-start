@@ -33,9 +33,15 @@ func (u UsersRepository) Create(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-func (u UsersRepository) All(ctx context.Context) ([]*models.User, error) {
+func (u UsersRepository) All(ctx context.Context, filter *models.NameFilter) ([]*models.User, error) {
+	basicQuery := "SELECT * FROM users"
+	if filter.Query != nil {
+		// sql-инъекция
+		basicQuery += " WHERE name ILIKE '%" + *filter.Query + "%'"
+	}
+
 	users := make([]*models.User, 0)
-	if err := u.conn.SelectContext(ctx, &users, "SELECT * FROM users"); err != nil {
+	if err := u.conn.SelectContext(ctx, &users, basicQuery); err != nil {
 		return nil, err
 	}
 

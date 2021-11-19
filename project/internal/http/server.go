@@ -2,10 +2,10 @@ package http
 
 import (
 	"context"
+	"github.com/erkkke/golang-start/project/internal/cache"
 	"github.com/erkkke/golang-start/project/internal/http/resources"
 	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/go-chi/chi"
-	lru "github.com/hashicorp/golang-lru"
 	"log"
 	"net/http"
 	"time"
@@ -20,7 +20,7 @@ type Server struct {
 	ctx               context.Context
 	idleConnectionsCh chan struct{}
 	store             store.Store
-	cache             *lru.TwoQueueCache
+	cache             cache.Cache
 
 	Address string
 }

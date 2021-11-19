@@ -3,22 +3,21 @@ package resources
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/erkkke/golang-start/project/internal/cache"
 	"github.com/erkkke/golang-start/project/internal/models"
 	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	lru "github.com/hashicorp/golang-lru"
-
 	"net/http"
 	"strconv"
 )
 
 type UsersResource struct {
 	store store.Store
-	cache *lru.TwoQueueCache
+	cache cache.Cache
 }
 
-func NewUsersResource(store store.Store, cache *lru.TwoQueueCache) *UsersResource {
+func NewUsersResource(store store.Store, cache cache.Cache) *UsersResource {
 	return &UsersResource{
 		store: store,
 		cache: cache,
@@ -45,12 +44,27 @@ func (ur *UsersResource) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := user.BeforeCreating(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+
 	err := ur.store.Users().Create(r.Context(), user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, err.Error())
 		return
 	}
+
+	// В идеале надо пройтись по всем буквам и по всем словам
+	if err = ur.cache.DeleteAll(r.Context()); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Cache err: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (ur *UsersResource) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -74,11 +88,40 @@ func (ur *UsersResource) LoginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ur *UsersResource) AllUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := ur.store.Users().All(r.Context())
+	queryValues := r.URL.Query()
+	filter := new(models.NameFilter)
+
+	searchQuery := queryValues.Get("query")
+	if searchQuery != "" {
+		couponsFromCache, err := ur.cache.Users().Get(r.Context(), searchQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
+
+		if couponsFromCache != nil {
+			render.JSON(w, r, couponsFromCache)
+			return
+		}
+
+		filter.Query = &searchQuery
+	}
+
+	users, err := ur.store.Users().All(r.Context(), filter)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "BD err: %v", err)
 		return
+	}
+
+	if searchQuery != "" && len(users) > 0 {
+		err = ur.cache.Users().Set(r.Context(), searchQuery, users)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
 	}
 
 	render.JSON(w, r, users)

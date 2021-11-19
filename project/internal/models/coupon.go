@@ -11,6 +11,6 @@ type Coupon struct {
 	PhoneNumber  string         `json:"phone_number" db:"phone_number"`
 }
 
-type CouponsFilter struct {
+type NameFilter struct {
 	Query *string `json:"query"`
 }

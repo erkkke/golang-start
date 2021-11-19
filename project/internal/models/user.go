@@ -12,8 +12,8 @@ type User struct {
 	ID                int    `json:"id" db:"id"`
 	Email             string `json:"email" db:"email"`
 	PhoneNumber       string `json:"phone_number" db:"phone_number"`
-	Password          string `json:"password" db:"password"`
-	EncryptedPassword string `json:"-" db:"-"`
+	Password          string `json:"password" db:"-"`
+	EncryptedPassword string `json:"-" db:"password"`
 	Name              string `json:"name" db:"name"`
 	Surname           string `json:"surname" db:"surname"`
 	BirthDate         string `json:"birth_date" db:"birth_date"`
@@ -42,6 +42,7 @@ func (u *User) BeforeCreating() error {
 
 		u.EncryptedPassword = enc
 	}
+	u.Sanitize()
 
 	return nil
 }

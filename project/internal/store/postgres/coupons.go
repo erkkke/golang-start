@@ -47,7 +47,7 @@ func (c CouponsRepository) Create(ctx context.Context, coupon *models.Coupon) er
 	return nil
 }
 
-func (c CouponsRepository) All(ctx context.Context, filter *models.CouponsFilter) ([]*models.Coupon, error) {
+func (c CouponsRepository) All(ctx context.Context, filter *models.NameFilter) ([]*models.Coupon, error) {
 	basicQuery := "SELECT * FROM coupons"
 	if filter.Query != nil {
 		// sql-инъекция

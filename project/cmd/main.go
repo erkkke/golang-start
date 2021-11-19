@@ -2,26 +2,31 @@ package main
 
 import (
 	"context"
+	"github.com/erkkke/golang-start/project/internal/cache/redis_cache"
 	"github.com/erkkke/golang-start/project/internal/http"
 	"github.com/erkkke/golang-start/project/internal/store/postgres"
-	lru "github.com/hashicorp/golang-lru"
 	"log"
 )
 
-const port = ":8081"
+const (
+	port = ":8081"
+
+	cacheDB = 1
+	cacheExpTime = 1800
+	cachePort = "localhost:6379"
+)
 
 func main() {
-	urlExample := "postgres://postgres:postgres@localhost:5432/golang_project"
+	urlDB := "postgres://postgres:postgres@localhost:5432/golang_project"
 	store := postgres.NewDB()
-	if err := store.Connect(urlExample); err != nil {
+	if err := store.Connect(urlDB); err != nil {
 		panic(err)
 	}
 	defer store.Close()
 
-	cache, err := lru.New2Q(6)
-	if err != nil {
-		panic(err)
-	}
+
+	cache := redis_cache.NewRedisCache(cachePort, cacheDB, cacheExpTime)
+	//defer cache.Close()
 
 	srv := http.NewServer(context.Background(),
 		http.WithAddress(port),

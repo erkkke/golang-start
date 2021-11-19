@@ -3,21 +3,21 @@ package resources
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/erkkke/golang-start/project/internal/cache"
 	"github.com/erkkke/golang-start/project/internal/models"
 	"github.com/erkkke/golang-start/project/internal/store"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	lru "github.com/hashicorp/golang-lru"
 	"net/http"
 	"strconv"
 )
 
 type CouponsResource struct {
 	store store.Store
-	cache *lru.TwoQueueCache
+	cache cache.Cache
 }
 
-func NewCouponsResource(store store.Store, cache *lru.TwoQueueCache) *CouponsResource {
+func NewCouponsResource(store store.Store, cache cache.Cache) *CouponsResource {
 	return &CouponsResource{
 		store: store,
 		cache: cache,
@@ -53,18 +53,30 @@ func (cr *CouponsResource) CreateCoupon(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// В идеале надо пройтись по всем буквам и по всем словам
-	cr.cache.Purge()
+	if err = cr.cache.DeleteAll(r.Context()); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Cache err: %v", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (cr *CouponsResource) AllCoupons(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
-	filter := &models.CouponsFilter{}
+	filter := &models.NameFilter{}
 
 	searchQuery := queryValues.Get("query")
 	if searchQuery != "" {
-		categoriesFromCache, ok := cr.cache.Get(searchQuery)
-		if ok {
-			render.JSON(w, r, categoriesFromCache)
+		couponsFromCache, err := cr.cache.Coupons().Get(r.Context(), searchQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
+
+		if couponsFromCache != nil {
+			render.JSON(w, r, couponsFromCache)
 			return
 		}
 
@@ -78,8 +90,13 @@ func (cr *CouponsResource) AllCoupons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if searchQuery != "" {
-		cr.cache.Add(searchQuery, coupons)
+	if searchQuery != "" && len(coupons) > 0 {
+		err = cr.cache.Coupons().Set(r.Context(), searchQuery, coupons)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Cache err: %v", err)
+			return
+		}
 	}
 
 	render.JSON(w, r, coupons)
