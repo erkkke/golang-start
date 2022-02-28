@@ -4,6 +4,7 @@
 ### Go ###
 # Binaries for programs and plugins
 .idea
+.vscode
 *.exe
 *.exe~
 *.dll
